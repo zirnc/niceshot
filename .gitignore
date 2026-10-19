@@ -5,3 +5,5 @@ compile_commands.json
 *.sqlite3-shm
 *.sqlite3-wal
 .cache/
+.vscode/
+CMakePresets.json

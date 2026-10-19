@@ -38,7 +38,7 @@ target_compile_options(niceshot_core PRIVATE ${NICESHOT_WARNINGS})
 # adapters: SQLite, CoreFoundation, CoreServices (FSEvents), ImageIO.
 # ---------------------------------------------------------------------------
 add_library(niceshot_adapters STATIC
-  src/adapters/adapters.cpp
+  src/adapters/macos/screenshots.cpp
 )
 target_link_libraries(niceshot_adapters PUBLIC niceshot_core)
 target_compile_options(niceshot_adapters PRIVATE ${NICESHOT_WARNINGS})
