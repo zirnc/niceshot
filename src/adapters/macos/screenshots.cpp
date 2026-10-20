@@ -13,7 +13,10 @@
 #include <algorithm>
 #include <cctype>
 #include <chrono>
+#include <cstdlib>
+#include <cstring>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <system_error>
 #include <utility>
@@ -25,6 +28,53 @@ namespace {
 
 constexpr const char* kScreenCaptureAttribute =
     "com.apple.metadata:kMDItemIsScreenCapture";
+
+std::optional<std::string> copyStringPreference(const char* key) {
+  CFStringRef cf_key =
+      CFStringCreateWithCString(nullptr, key, kCFStringEncodingUTF8);
+  if (cf_key == nullptr) {
+    return std::nullopt;
+  }
+
+  CFPropertyListRef value = CFPreferencesCopyAppValue(
+      cf_key, CFSTR("com.apple.screencapture"));
+  CFRelease(cf_key);
+
+  if (value == nullptr) {
+    return std::nullopt;
+  }
+
+  std::optional<std::string> result;
+  if (CFGetTypeID(value) == CFStringGetTypeID()) {
+    const auto string = static_cast<CFStringRef>(value);
+    const CFIndex capacity =
+        CFStringGetMaximumSizeForEncoding(CFStringGetLength(string),
+                                          kCFStringEncodingUTF8) +
+        1;
+    std::string buffer(static_cast<std::size_t>(capacity), '\0');
+
+    if (CFStringGetCString(string, buffer.data(), capacity,
+                           kCFStringEncodingUTF8)) {
+      buffer.resize(std::strlen(buffer.c_str()));
+      result = std::move(buffer);
+    }
+  }
+
+  CFRelease(value);
+  return result;
+}
+
+std::filesystem::path expandTilde(const std::string& value) {
+  if (value == "~" || value.rfind("~/", 0) == 0) {
+    if (const char* home = std::getenv("HOME")) {
+      if (value == "~") {
+        return std::filesystem::path(home);
+      }
+      return std::filesystem::path(home) / value.substr(2);
+    }
+  }
+  return std::filesystem::path(value);
+}
 
 bool isImageExtension(const std::filesystem::path& path) {
   std::string extension = path.extension().string();
@@ -46,33 +96,17 @@ bool hasScreenshotAttribute(const std::filesystem::path& path) {
 
 }  // namespace
 std::filesystem::path screenshot_folder() {
-  CFStringRef domain = CFSTR("com.apple.screencapture");
-  CFStringRef key = CFSTR("location");
-
-  CFPropertyListRef value = CFPreferencesCopyAppValue(key, domain);
-  if (!value || CFGetTypeID(value) != CFStringGetTypeID()) {
-    if (value) {
-      CFRelease(value);
+  for (const char* key : {"location-screenshot", "location"}) {
+    if (auto value = copyStringPreference(key); value && !value->empty()) {
+      return expandTilde(*value);
     }
-    return {};
   }
 
-  const auto location = static_cast<CFStringRef>(value);
-  const CFIndex capacity =
-      CFStringGetMaximumSizeForEncoding(CFStringGetLength(location),
-                                        kCFStringEncodingUTF8) +
-      1;
-  std::string path(static_cast<std::size_t>(capacity), '\0');
-  const bool converted = CFStringGetCString(location, path.data(), capacity,
-                                            kCFStringEncodingUTF8);
-  CFRelease(value);
-
-  if (!converted) {
-    return {};
+  if (const char* home = std::getenv("HOME")) {
+    return std::filesystem::path(home) / "Desktop";
   }
 
-  path.resize(std::char_traits<char>::length(path.c_str()));
-  return std::filesystem::path(path);
+  return {};
 }
 
 bool isScreenshot(std::filesystem::path screenshot) {

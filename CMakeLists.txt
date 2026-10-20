@@ -30,6 +30,7 @@ endif()
 add_library(niceshot_core STATIC
   src/domain/domain.cpp
   src/app/app.cpp
+  src/app/watch.cpp
 )
 target_include_directories(niceshot_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src)
 target_compile_options(niceshot_core PRIVATE ${NICESHOT_WARNINGS})
@@ -39,6 +40,7 @@ target_compile_options(niceshot_core PRIVATE ${NICESHOT_WARNINGS})
 # ---------------------------------------------------------------------------
 add_library(niceshot_adapters STATIC
   src/adapters/macos/screenshots.cpp
+  src/adapters/macos/polling_source.cpp
 )
 target_link_libraries(niceshot_adapters PUBLIC niceshot_core)
 target_compile_options(niceshot_adapters PRIVATE ${NICESHOT_WARNINGS})
