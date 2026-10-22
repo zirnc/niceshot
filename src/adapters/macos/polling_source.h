@@ -17,16 +17,7 @@ class PollingSource final : public ScreenshotSource {
   }
 
   void run(const std::function<void(const Screenshot&)>& on_screenshot,
-           const std::function<bool()>& should_stop) override {
-    using namespace std::chrono_literals;
-
-    while (!should_stop()) {
-      for (const auto& screenshot : scan()) {
-        on_screenshot(screenshot);
-      }
-      std::this_thread::sleep_for(500ms);
-    }
-  }
+           const std::function<bool()>& should_stop) override;
 
  private:
   std::filesystem::path screenshotFolder;

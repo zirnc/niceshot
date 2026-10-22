@@ -41,6 +41,7 @@ target_compile_options(niceshot_core PRIVATE ${NICESHOT_WARNINGS})
 add_library(niceshot_adapters STATIC
   src/adapters/macos/screenshots.cpp
   src/adapters/macos/polling_source.cpp
+  src/adapters/macos/fsevents_source.cpp
 )
 target_link_libraries(niceshot_adapters PUBLIC niceshot_core)
 target_compile_options(niceshot_adapters PRIVATE ${NICESHOT_WARNINGS})

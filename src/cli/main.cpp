@@ -6,6 +6,7 @@
 // Keep this file thin: no xattr, no FSEvents, no SQLite here.
 // See docs/ARCHITECTURE.md, section 2 and milestone M1.
 
+#include <adapters/macos/fsevents_source.h>
 #include <adapters/macos/polling_source.h>
 #include <adapters/macos/screenshots.h>
 #include <app/watch.h>
@@ -43,19 +44,29 @@ void scan() {
 
 volatile std::sig_atomic_t g_stop = 0;
 void handle_signal(int) { g_stop = 1; }
-void watch() {
+int watch() {
   std::signal(SIGINT, handle_signal);
   std::signal(SIGTERM, handle_signal);
   std::filesystem::path folder = niceshot::macOS::screenshot_folder();
+
+  if (folder.empty() || !std::filesystem::is_directory(folder)) {
+    std::fprintf(stderr, "screenshot folder not found: %s\n",
+                 folder.string().c_str());
+    return 3;
+  }
+
   std::print("Watching {}\n", folder.string());
-  niceshot::macOS::PollingSource source(folder);
+  std::fflush(stdout);
+  niceshot::macOS::FSEventsSource source(folder);
   niceshot::app::watch(
       source,
       [](const niceshot::Screenshot& screenshot) {
         std::print("New screenshot! {}\n", screenshot.path.string());
+        std::fflush(stdout);
       },
       [] { return g_stop; });
   std::print("Stopped\n");
+  return 0;
 }
 
 int main(int argc, char* argv[]) {
@@ -65,7 +76,7 @@ int main(int argc, char* argv[]) {
     if (command == "scan") {
       scan();
     } else if (command == "watch") {
-      watch();
+      return watch();
     }
   }
   return 0;
