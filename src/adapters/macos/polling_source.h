@@ -16,7 +16,7 @@ class PollingSource final : public ScreenshotSource {
     return scan_screenshots(screenshotFolder);
   }
 
-  void run(const std::function<void(const Screenshot&)>& on_screenshot,
+  bool run(const std::function<void(const Screenshot&)>& on_screenshot,
            const std::function<bool()>& should_stop) override;
 
  private:

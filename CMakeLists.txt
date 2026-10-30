@@ -42,6 +42,8 @@ add_library(niceshot_adapters STATIC
   src/adapters/macos/screenshots.cpp
   src/adapters/macos/polling_source.cpp
   src/adapters/macos/fsevents_source.cpp
+  src/adapters/macos/mac_screenshot_folder_provider.cpp
+  src/adapters/sqlite/sqlite_screenshot_repository.cpp
 )
 target_link_libraries(niceshot_adapters PUBLIC niceshot_core)
 target_compile_options(niceshot_adapters PRIVATE ${NICESHOT_WARNINGS})

@@ -10,7 +10,7 @@ class ScreenshotSource {
   virtual ~ScreenshotSource() = default;
   virtual std::vector<Screenshot> scan() const = 0;
 
-  virtual void run(const std::function<void(const Screenshot&)>& on_screenshot,
+  virtual bool run(const std::function<void(const Screenshot&)>& on_screenshot,
                    const std::function<bool()>& should_stop) = 0;
 };
 

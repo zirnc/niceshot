@@ -7,3 +7,6 @@ compile_commands.json
 .cache/
 .vscode/
 CMakePresets.json
+*.db
+*.db-shm
+*.db-wal

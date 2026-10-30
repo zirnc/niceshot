@@ -2,7 +2,7 @@
 
 namespace niceshot::macOS {
 
-void PollingSource::run(
+bool PollingSource::run(
     const std::function<void(const Screenshot&)>& on_screenshot,
     const std::function<bool()>& should_stop) {
   using namespace std::chrono_literals;
@@ -13,6 +13,7 @@ void PollingSource::run(
     }
     std::this_thread::sleep_for(500ms);
   }
+  return 1;
 }
 
 }  // namespace niceshot::macOS

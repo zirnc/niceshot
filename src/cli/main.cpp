@@ -1,14 +1,8 @@
-// cli: parse arguments, assemble concrete adapters, print results.
-//
-// M1: add `niceshot scan` and call your screenshot scanner.
-// M2: add `niceshot watch` and wire a watcher.
-//
-// Keep this file thin: no xattr, no FSEvents, no SQLite here.
-// See docs/ARCHITECTURE.md, section 2 and milestone M1.
-
 #include <adapters/macos/fsevents_source.h>
+#include <adapters/macos/mac_screenshot_folder_provider.h>
 #include <adapters/macos/polling_source.h>
 #include <adapters/macos/screenshots.h>
+#include <adapters/sqlite/sqlite_screenshot_repository.h>
 #include <app/watch.h>
 
 #include <atomic>
@@ -55,16 +49,39 @@ int watch() {
     return 3;
   }
 
-  std::print("Watching {}\n", folder.string());
-  std::fflush(stdout);
-  niceshot::macOS::FSEventsSource source(folder);
-  niceshot::app::watch(
-      source,
-      [](const niceshot::Screenshot& screenshot) {
-        std::print("New screenshot! {}\n", screenshot.path.string());
-        std::fflush(stdout);
-      },
-      [] { return g_stop; });
+  niceshot::sqlite::SqliteScreenshotRepository repository("./test.db");
+
+  auto make_source = [](const std::filesystem::path& folder)
+      -> std::unique_ptr<niceshot::ScreenshotSource> {
+    return std::make_unique<niceshot::macOS::FSEventsSource>(folder);
+  };
+  niceshot::macOS::MacScreenshotFolderProvider folders;
+
+  niceshot::app::WatchCallbacks callbacks{
+      .on_watching =
+          [](const std::filesystem::path& folder) {
+            std::print("Watching {}\n", folder.string());
+            std::fflush(stdout);
+          },
+      .on_new =
+          [&repository](const niceshot::Screenshot& screenshot) {
+            repository.upsert(screenshot);
+            std::print("New screenshot! {}\n", screenshot.path.string());
+            std::fflush(stdout);
+          },
+      .on_error =
+          [](const std::string& message) {
+            std::fprintf(stderr, "%s\n", message.c_str());
+          },
+  };
+
+  niceshot::app::watch(folders, make_source, callbacks,
+                       [] { return g_stop != 0; });
+
+  auto v = repository.recent(10);
+  for (auto i : v) {
+    std::cout << i.path.c_str() << std::endl;
+  }
   std::print("Stopped\n");
   return 0;
 }

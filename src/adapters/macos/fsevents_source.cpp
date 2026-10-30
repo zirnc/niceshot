@@ -8,10 +8,8 @@
 
 namespace niceshot::macOS {
 
-void FSEventsSource::callback(ConstFSEventStreamRef,
-                              void* callbackInfo, size_t,
-                              void*,
-                              const FSEventStreamEventFlags[],
+void FSEventsSource::callback(ConstFSEventStreamRef, void* callbackInfo, size_t,
+                              void*, const FSEventStreamEventFlags[],
                               const FSEventStreamEventId[]) {
   auto* self = static_cast<FSEventsSource*>(callbackInfo);
   if (self == nullptr) {
@@ -23,7 +21,7 @@ void FSEventsSource::callback(ConstFSEventStreamRef,
   }
 }
 
-void FSEventsSource::run(
+bool FSEventsSource::run(
     const std::function<void(const Screenshot&)>& on_screenshot,
     const std::function<bool()>& should_stop) {
   on_screenshot_func = on_screenshot;
@@ -32,17 +30,16 @@ void FSEventsSource::run(
       kCFAllocatorDefault, screenshotFolder.c_str(), kCFStringEncodingUTF8);
   if (path == nullptr) {
     std::fprintf(stderr, "CFStringCreateWithCString failed\n");
-    return;
+    return 0;
   }
 
   const void* values[] = {path};
-  CFArrayRef paths =
-      CFArrayCreate(nullptr, values, 1, &kCFTypeArrayCallBacks);
+  CFArrayRef paths = CFArrayCreate(nullptr, values, 1, &kCFTypeArrayCallBacks);
   CFRelease(path);
 
   if (paths == nullptr) {
     std::fprintf(stderr, "CFArrayCreate failed\n");
-    return;
+    return 0;
   }
 
   FSEventStreamContext context{};
@@ -51,13 +48,12 @@ void FSEventsSource::run(
 
   FSEventStreamRef stream = FSEventStreamCreate(
       nullptr, &FSEventsSource::callback, &context, paths,
-      kFSEventStreamEventIdSinceNow, 0.5,
-      kFSEventStreamCreateFlagFileEvents);
+      kFSEventStreamEventIdSinceNow, 0.5, kFSEventStreamCreateFlagFileEvents);
 
   if (stream == nullptr) {
     std::fprintf(stderr, "FSEventStreamCreate failed\n");
     CFRelease(paths);
-    return;
+    return 0;
   }
 
   dispatch_queue_t queue =
@@ -67,7 +63,7 @@ void FSEventsSource::run(
     FSEventStreamInvalidate(stream);
     FSEventStreamRelease(stream);
     CFRelease(paths);
-    return;
+    return 0;
   }
 
   FSEventStreamSetDispatchQueue(stream, queue);
@@ -78,7 +74,7 @@ void FSEventsSource::run(
     FSEventStreamRelease(stream);
     CFRelease(paths);
     dispatch_release(queue);
-    return;
+    return 0;
   }
 
   while (!should_stop()) {
@@ -94,5 +90,6 @@ void FSEventsSource::run(
   FSEventStreamRelease(stream);
   CFRelease(paths);
   dispatch_release(queue);
+  return 1;
 }
 }  // namespace niceshot::macOS
